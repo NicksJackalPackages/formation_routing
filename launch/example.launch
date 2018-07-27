@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+
+<launch>
+
+  <!-- Creates a Jackal in Gazebo. -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="use_sim_time" value="true"/>
+    <arg name="gui"          value="false"/>
+    <arg name="world_name"   value="$(find multi_jackal_tutorials)/worlds/empty.world"/>
+  </include>
+  <include file="$(find multi_jackal_base)/launch/jackal_base.launch">
+    <arg name="ns"             value="jackal0"/>
+  </include>
+  
+  <!-- Launch formation routing. Waypoint order is [x, y, zone]. The robot will
+       sit at the last point in the zone until all robots are ready, then they 
+       will move to the first point in the next zone. -->
+  <node ns="jackal0" pkg="formation_routing" type="formation_routing.py" 
+        name="formation_routing" output="screen">
+    <rosparam param="waypoints">[ 0,   0, 0,
+                                 10,  10, 0,
+                                 20,  10, 0,
+                                 20, -10, 1,
+                                  0, -10, 1]</rosparam>
+    <param name="baselink_frame"     value="jackal0/base_link"/>
+    <param name="lin_vel"            value="2"/>
+    <param name="ang_vel"            value="1.5"/>
+  </node>
+     
+     
+  <!-- Create a transformation. -->
+  <!--<node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf"
+        args="0 0 0 0 0 0 map base_link 100"/>-->
+  
+  <!-- Display on RVIZ. -->
+  <group if="true">
+    <node name="rviz" pkg="rviz" type="rviz"
+        args="-d $(find formation_routing)/config/rviz.rviz">
+    </node>
+  </group>  
+  
+</launch>
