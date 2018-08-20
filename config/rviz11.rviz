@@ -4,7 +4,6 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /Grid1
         - /Grid1/Offset1
         - /TF1/Frames1
         - /Jackal01

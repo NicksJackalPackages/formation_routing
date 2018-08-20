@@ -52,7 +52,7 @@ class formation_routing_node:
     rospy.Subscriber("/zone_complete", ZoneComplete, self.subscribeZoneCompletions)
 
   def pubs(self):
-    self.pub_vel = rospy.Publisher('jackal_velocity_controller/cmd_vel', Twist, queue_size=10)
+    self.pub_vel = rospy.Publisher('/jackal_velocity_controller/cmd_vel', Twist, queue_size=10)
     self.pub_zone = rospy.Publisher('/zone_complete', ZoneComplete, queue_size=1)
     self.pub_completed  = rospy.Publisher('completed_waypoints', Path, queue_size=1)
     self.pub_incomplete = rospy.Publisher('incomplete_waypoints', Path, queue_size=1)

@@ -1,0 +1,138 @@
+<?xml version="1.0"?>
+<launch>
+
+  <!-- Creates a Jackal in Gazebo. -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="use_sim_time" value="true"/>
+    <arg name="gui"          value="false"/>
+    <arg name="world_name"   value="$(find multi_jackal_tutorials)/worlds/empty.world"/>
+  </include>
+  <include file="$(find multi_jackal_base)/launch/jackal_base.launch">
+    <arg name="ns"             value="jackal0"/>
+    <arg name="use_global_tf"  value="false"/>
+    <arg name="use_global_ekf" value="true"/>
+    <arg name="gps_rate"       value="10"/>
+    <arg name="x"              value="-70"/>
+    <arg name="y"              value="2"/>
+  </include>
+  <include file="$(find multi_jackal_base)/launch/jackal_base.launch">
+    <arg name="ns"             value="jackal1"/>
+    <arg name="use_global_tf"  value="false"/>
+    <arg name="use_global_ekf" value="true"/>
+    <arg name="gps_rate"       value="10"/>
+    <arg name="x"              value="-50"/>
+    <arg name="y"              value="0"/>
+  </include>
+  
+  <!-- Launch formation routing. Waypoint order is [x, y, zone]. The robot will
+       sit at the last point in the zone until all robots are ready, then they 
+       will move to the first point in the next zone. -->
+  <node ns="jackal0" pkg="formation_routing" type="formation_routing_node.py" 
+        name="formation_routing" output="screen">
+    <rosparam param="waypoints">[-95.7, 2.5, 0,
+                                -75.9, 3.3, 1,
+                                -73.3, 5.2, 1,
+                                -73.4, 5.2, 2,
+                                -64.7, 10.9, 2,
+                                -54.0, 17.1, 2,
+                                -54.1, 17.0, 3,
+                                -52.4, 17.4, 3,
+                                -43.4, 15.0, 3,
+                                -35.2, 22.4, 3,
+                                -33.0, 19.9, 3,
+                                -25.2, 18.2, 4,
+                                -5.9, 8.1, 4,
+                                -1.5, 15.1, 4,
+                                -10.0, 33.6, 4,
+                                -12.3, 40.5, 5,
+                                -16.4, 50.0, 5,
+                                -13.1, 60.9, 5,
+                                -17.7, 68.7, 5,
+                                -17.8, 72.8, 6,
+                                -19.2, 82.7, 6,
+                                -10.7, 92.4, 6,
+                                -17.9, 93.4, 6,
+                                -37.5, 88.9, 6,
+                                -61.7, 83.8, 7,
+                                -72.8, 83.6, 7,
+                                -80.0, 80.7, 7,
+                                -87.9, 86.0, 7,
+                                -87.9, 86.0, 8,
+                                -98.6, 93.6, 8,
+                                -96.1, 78.0, 8,
+                                -97.9, 70.8, 8,
+                                -97.1, 67.4, 9,
+                                -98.7, 64.8, 9,
+                                -93.2, 38.5, 9,
+                                -92.4, 17.1, 10,
+                                -97.5, 4.3, 10]</rosparam>
+    <param name="robot_id"           value="0"/>
+    <param name="baselink_frame"     value="jackal0/base_link"/>
+    <param name="lin_vel"            value="2"/>
+    <param name="ang_vel"            value="3"/>
+  </node>
+  <node ns="jackal1" pkg="formation_routing" type="formation_routing_node.py" 
+        name="formation_routing" output="screen">
+    <rosparam param="waypoints">[-97.5, 4.3, 0,
+                                -92.1, 3.4, 1,
+                                -77.0, 12.0, 1,
+                                -77.1, 12.0, 2,
+                                -71.7, 13.8, 2,
+                                -58.3, 23.5, 2,
+                                -58.3, 23.5, 3,
+                                -57.3, 25.3, 3,
+                                -44.3, 38.6, 3,
+                                -37.0, 33.1, 3,
+                                -31.3, 27.5, 3,
+                                -23.5, 25.8, 4,
+                                -8.3, 15.7, 4,
+                                -16.9, 29.2, 4,
+                                -17.4, 31.2, 4,
+                                -19.7, 38.1, 5,
+                                -28.5, 47.3, 5,
+                                -25.4, 68.3, 5,
+                                -25.6, 72.4, 6,
+                                -34.4, 85.4, 6,
+                                -35.9, 81.3, 6,
+                                -60.2, 76.2, 7,
+                                -72.2, 69.9, 7,
+                                -90.9, 78.9, 7,
+                                -90.9, 78.9, 8,
+                                -90.3, 72.6, 8,
+                                -89.5, 69.1, 9,
+                                -90.7, 63.3, 9,
+                                -82.5, 51.5, 9,
+                                -81.0, 41.5, 9,
+                                -85.4, 38.8, 9,
+                                -84.6, 17.4, 10,
+                                -95.7, 2.5, 10]</rosparam>
+    <param name="robot_id"           value="1"/>
+    <param name="baselink_frame"     value="jackal1/base_link"/>
+    <param name="lin_vel"            value="2"/>
+    <param name="ang_vel"            value="3"/>
+  </node>
+  
+  <!-- Plot the paths. -->
+  <node ns="jackal0" pkg="plot_path" type="plot_path_node.py"
+        name="plot_path" output="screen">
+    <param name="frame_from" value="map"/>
+    <param name="frame_to"   value="jackal0/base_link"/>
+  </node>
+  <node ns="jackal1" pkg="plot_path" type="plot_path_node.py"
+        name="plot_path" output="screen">
+    <param name="frame_from" value="map"/>
+    <param name="frame_to"   value="jackal1/base_link"/>
+  </node>
+     
+  <!-- Create a transformation. -->
+  <!--<node pkg="tf" type="static_transform_publisher" name="static_map_odom_tf"
+        args="0 0 0 0 0 0 map base_link 100"/>-->
+  
+  <!-- Display on RVIZ. -->
+  <group if="true">
+    <node name="rviz" pkg="rviz" type="rviz"
+        args="-d $(find formation_routing)/config/rviz3.rviz">
+    </node>
+  </group>  
+  
+</launch>
