@@ -16,13 +16,40 @@ class formation_routing_node:
   y    = []  # list of y positions
   zone = []  # list of zone IDs
   wp = 0     # current waypoint index
+  
   def __init__(self):
     self.params()
     self.subs()
     self.pubs()
+    self.completed_waypoints  = Path()
+    self.incomplete_waypoints = Path()
+    self.current_waypoints    = Path()
+    self.all_targets          = Path()
+    self.completed_waypoints.header.frame_id  = self.map_frame
+    self.incomplete_waypoints.header.frame_id = self.map_frame
+    self.current_waypoints.header.frame_id    = self.map_frame
+    self.all_targets.header.frame_id          = self.map_frame
+    for i in range(0,len(self.x)):
+      pose = PoseStamped()
+      pose.header.frame_id = self.map_frame
+      pose.header.stamp = rospy.get_rostime()
+      pose.pose.position.x = self.x[i]
+      pose.pose.position.y = self.y[i]
+      pose.pose.orientation.x = 0
+      pose.pose.orientation.y = 0.7071
+      pose.pose.orientation.z = 0
+      pose.pose.orientation.w = -0.7071
+      self.incomplete_waypoints.poses.append(pose)
+      if self.isTarget(i):
+        self.all_targets.poses.append(pose)
+        print("yes")
+        print(i)
+      else:
+        print("no")
+        print(i)
     self.tf_buffer   = tf2_ros.Buffer()
     self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
-    rospy.Timer(rospy.Duration(0.5), self.timerPublishPaths, oneshot=False)
+    rospy.Timer(rospy.Duration(0.3), self.timerPublishPaths, oneshot=False)
 
   def params(self):
     self.robot_id       = rospy.get_param('~robot_id', 0)
@@ -38,12 +65,32 @@ class formation_routing_node:
       print("Incorrect waypoint parameter.")
       return
     print("Waypoints are: ")
-    print(waypoints)
+    #print(waypoints)
     self.x    = waypoints[0::3]
     self.y    = waypoints[1::3]
     self.zone = waypoints[2::3]
     self.wp = 0
     self.state = self.MOVING
+    
+    # Last minute adjustments.
+    # Trial 2
+    #for i in range(0,len(self.x)):
+    #  self.x[i] = -0.5*self.x[i] + 20
+    #for i in range(0,len(self.y)):
+    #  self.y[i] = 0.5*self.y[i]
+    
+    # Trial 3
+    #for i in range(0,len(self.x)):
+    #  self.x[i] = -0.5*self.x[i] + 20
+    #for i in range(0,len(self.y)):
+    #  self.y[i] = 0.5*self.y[i] + 20
+    # Trial 4
+    #for i in range(0,len(self.x)):
+    #  self.x[i] = self.x[i]
+    #for i in range(0,len(self.y)):
+    #  self.y[i] = self.y[i]
+    
+    
     print(self.x)
     print(self.y)
     print(self.zone)
@@ -57,19 +104,7 @@ class formation_routing_node:
     self.pub_completed  = rospy.Publisher('completed_waypoints', Path, queue_size=1)
     self.pub_incomplete = rospy.Publisher('incomplete_waypoints', Path, queue_size=1)
     self.pub_current    = rospy.Publisher('current_waypoints', Path, queue_size=1)
-    self.completed_waypoints  = Path()
-    self.incomplete_waypoints = Path()
-    self.current_waypoints    = Path()
-    self.completed_waypoints.header.frame_id  = self.map_frame
-    self.incomplete_waypoints.header.frame_id = self.map_frame
-    self.current_waypoints.header.frame_id    = self.map_frame
-    for i in range(0,len(self.x)):
-      pose = PoseStamped()
-      pose.header.frame_id = self.map_frame
-      pose.header.stamp = rospy.get_rostime()
-      pose.pose.position.x = self.x[i]
-      pose.pose.position.y = self.y[i]
-      self.incomplete_waypoints.poses.append(pose)
+    self.pub_all_targets= rospy.Publisher('all_targets', Path, queue_size=1)
 
   ###### Waypoint display. ######
 
@@ -77,6 +112,7 @@ class formation_routing_node:
     self.publishCompletedWaypoints()
     self.publishIncompleteWaypoints()
     self.publishCurrentWaypoints()
+    self.publishAllTargets()
 
   def publishCompletedWaypoints(self):
     self.completed_waypoints.header.seq = self.completed_waypoints.header.seq + 1
@@ -88,6 +124,10 @@ class formation_routing_node:
       pose.header.stamp = rospy.get_rostime()
       pose.pose.position.x = self.x[self.wp-1]
       pose.pose.position.y = self.y[self.wp-1]
+      pose.pose.orientation.x = 0
+      pose.pose.orientation.y = 0.7071
+      pose.pose.orientation.z = 0
+      pose.pose.orientation.w = -0.7071
       poses.append(pose)
       self.completed_waypoints.poses = poses
     self.pub_completed.publish(self.completed_waypoints)
@@ -115,14 +155,19 @@ class formation_routing_node:
     self.current_waypoints.poses = poses
     self.pub_current.publish(self.current_waypoints)
 
+  def publishAllTargets(self):
+    self.all_targets.header.seq = self.all_targets.header.seq + 1
+    self.all_targets.header.stamp = rospy.get_rostime()
+    self.pub_all_targets.publish(self.all_targets)
+    
   ###### Waiting for formation ######
 
   def subscribeZoneCompletions(self, msg):
+    if not self.state == self.WAITING or msg.robot_id == self.robot_id:
+      return
     print("Received a message:")
     print(self.robot_id)
     print(msg)
-    if not self.state == self.WAITING or msg.robot_id == self.robot_id:
-      return
     if msg.zone_id == self.zone[self.wp-1]:  #they've completed what we've completed
       self.state = self.ABOUT_TO_MOVE
       rospy.Timer(rospy.Duration(self.wait_time), self.timerStartMoving, oneshot=True)
@@ -131,6 +176,15 @@ class formation_routing_node:
     self.state = self.MOVING
 
   ###### Helper functions ######
+
+  def isTarget(self, wp_num):
+    if wp_num <= 1:
+      return False
+    if wp_num >= len(self.zone)-1:
+      return False
+    if( self.zone[wp_num] == self.zone[wp_num+1] and self.zone[wp_num] == self.zone[wp_num-1] ):
+      return True
+    return False
 
   def lookupXYYaw(self):
     try:
@@ -204,7 +258,7 @@ class formation_routing_node:
       msg.zone_id = self.zone[self.wp-1]
       self.pub_zone.publish(msg)
       # Sleep.
-      rospy.sleep(0.2) #seconds
+      rospy.sleep(0.5) #seconds
 
     elif self.state == self.ABOUT_TO_MOVE:
       print("I'm about to move")
@@ -214,7 +268,7 @@ class formation_routing_node:
       msg.zone_id = self.zone[self.wp-1]
       self.pub_zone.publish(msg)
       # Sleep.
-      rospy.sleep(0.2) #seconds
+      rospy.sleep(0.5) #seconds
 
     elif self.state == self.FINISHED:
       print("I'm finished")
